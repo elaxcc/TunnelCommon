@@ -118,12 +118,10 @@ int RsaCrypting::EncryptByInternalRSA(const std::vector<char>& in_data, std::vec
 	}
 
 	char *ptext, *ctext;
-	FILE * pub_key_file = NULL;
 
 	// Определяем длину ключа
 	int key_size = RSA_size(rsa_internal_);
 	ctext = new char [key_size];
-	ptext = new char [key_size];
 	// Шифруем
 	RSA_public_encrypt(in_data.size(), (const unsigned char*) &in_data[0],
 		(unsigned char*) ctext, rsa_internal_, RSA_PKCS1_PADDING);
@@ -140,7 +138,6 @@ int RsaCrypting::EncryptByInternalRSA(const std::vector<char>& in_data, std::vec
 		int_data_size -= data_len_for_crypting;
 	}
 
-	delete [] ptext;
 	delete [] ctext;
 
 	return Errror_No;
@@ -154,12 +151,10 @@ int RsaCrypting::DecryptByInternalRSA(const std::vector<char>& in_data, std::vec
 	}
 
 	char *ptext, *ctext;
-	FILE * pub_key_file = NULL;
 
 	// Определяем длину ключа
 	int key_size = RSA_size(rsa_internal_);
 	ctext = new char [key_size];
-	ptext = new char [key_size];
 
 	std::vector<char>::const_iterator in_data_iter = in_data.begin();
 	int int_data_size = in_data.size();
@@ -180,7 +175,6 @@ int RsaCrypting::DecryptByInternalRSA(const std::vector<char>& in_data, std::vec
 		int_data_size -= data_len_for_crypting;
 	}
 
-	delete [] ptext;
 	delete [] ctext;
 
 	return Errror_No;
@@ -194,12 +188,10 @@ int RsaCrypting::EncryptByExternalRSA(const std::vector<char>& in_data, std::vec
 	}
 
 	char *ptext, *ctext;
-	FILE * pub_key_file = NULL;
 
 	// Определяем длину ключа
 	int key_size = RSA_size(rsa_external_);
 	ctext = new char [key_size];
-	ptext = new char [key_size];
 
 	std::vector<char>::const_iterator in_data_iter = in_data.begin();
 	int int_data_size = in_data.size();
@@ -219,7 +211,6 @@ int RsaCrypting::EncryptByExternalRSA(const std::vector<char>& in_data, std::vec
 		int_data_size -= data_len_for_crypting;
 	}
 
-	delete [] ptext;
 	delete [] ctext;
 
 	return Errror_No;

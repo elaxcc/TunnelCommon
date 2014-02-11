@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../../openssl/crypto; ../../openssl/inc32"
+				AdditionalIncludeDirectories="../../openssl/crypto; ../../openssl/inc32; ../../boost"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -62,7 +62,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies=" libeay32.lib ssleay32.lib"
-				AdditionalLibraryDirectories="../../openssl/out32.dbg"
+				AdditionalLibraryDirectories="../../openssl/out32.dbg; ../../boost/stage/lib;"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -107,7 +107,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../../openssl/crypto; ../../openssl/inc32"
+				AdditionalIncludeDirectories="../../openssl/crypto; ../../openssl/inc32; ../../boost"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -127,7 +127,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies=" libeay32.lib ssleay32.lib"
-				AdditionalLibraryDirectories="../../openssl/out32.dbg"
+				AdditionalLibraryDirectories="../../openssl/out32.dbg; ../../boost/stage/lib;"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -159,6 +159,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Hash.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -186,6 +190,10 @@
 			>
 			<File
 				RelativePath=".\Crypting.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Hash.h"
 				>
 			</File>
 			<File

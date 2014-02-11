@@ -14,4 +14,8 @@
 #include <rsa/rsa.h>
 #include <pem/pem.h>
 
+#include <openssl/md5.h>
+
+#include <boost/cstdint.hpp>
+
 // TODO: reference additional headers your program requires here
