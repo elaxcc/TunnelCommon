@@ -26,6 +26,7 @@ private:
 
 class CRC32_hash
 {
+public:
 	CRC32_hash();
 	~CRC32_hash();
 
