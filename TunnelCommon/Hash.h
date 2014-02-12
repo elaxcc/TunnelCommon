@@ -9,6 +9,7 @@ public:
 	Md5_Hash();
 	~Md5_Hash();
 
+	void Init();
 	void Update(const std::vector<char>& data);
 	void Update(char *data, int data_len);
 	void Final();

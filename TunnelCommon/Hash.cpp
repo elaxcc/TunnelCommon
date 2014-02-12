@@ -7,17 +7,21 @@ namespace TunnelCommon
 
 Md5_Hash::Md5_Hash()
 {
+}
+
+Md5_Hash::~Md5_Hash()
+{
+	Clean();
+}
+
+void Md5_Hash::Init()
+{
 	// Добавляем алгоритмы хэширования во внутреннюю таблицу библиотеки
 	OpenSSL_add_all_digests();
 
 	// Получаем адреса функций алгоритма MD5 и инициализируем контекст для вычисления хэша
 	md_ = EVP_get_digestbyname("md5");
 	EVP_DigestInit(&mdctx_, md_);
-}
-
-Md5_Hash::~Md5_Hash()
-{
-	Clean();
 }
 
 void Md5_Hash::Update(const std::vector<char>& data)
