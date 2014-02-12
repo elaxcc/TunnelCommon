@@ -163,6 +163,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Protocol.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -194,6 +198,10 @@
 			</File>
 			<File
 				RelativePath=".\Hash.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Protocol.h"
 				>
 			</File>
 			<File
