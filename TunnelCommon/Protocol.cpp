@@ -10,6 +10,8 @@ ProtocolParser::ProtocolParser()
 	, got_data_(false)
 	, got_crc_(false)
 	, complete_(false)
+	, got_rsa_key_(false)
+	, got_login_data_(false)
 {
 	rsa_crypting_.GenerateInternalKeys();
 }
@@ -82,6 +84,7 @@ int ProtocolParser::parse_common(const std::vector<char>& data)
 		}
 		else
 		{
+			flush_common();
 			return Error_crc;
 		}
 	}
@@ -89,7 +92,7 @@ int ProtocolParser::parse_common(const std::vector<char>& data)
 	return Error_no;
 }
 
-void ProtocolParser::flush()
+void ProtocolParser::flush_common()
 {
 	got_data_len_ = false;
 	got_data_ = false;
@@ -102,11 +105,14 @@ void ProtocolParser::flush()
 
 void ProtocolParser::reset()
 {
-	flush();
+	flush_common();
 
 	buffer_.clear();
 	login_.clear();
 	passwd_hash_.clear();
+
+	got_rsa_key_ = false;
+	got_login_data_ = false;
 }
 
 int ProtocolParser::parse_rsa_key_packet()
@@ -129,12 +135,16 @@ int ProtocolParser::parse_rsa_key_packet()
 	}
 
 	std::vector<char> external_public_key(data_);
-	rsa_crypting_.RSA_FromPublicKey(&data_[sizeof(rsa_pub_kye_len)], rsa_pub_kye_len);
-
-	return Error_no;
+	int res = rsa_crypting_.RSA_FromPublicKey(&data_[sizeof(rsa_pub_kye_len)], rsa_pub_kye_len);
+	if (res == RsaCrypting::Errror_no)
+	{
+		got_rsa_key_ = true;
+		return Error_no;
+	}
+	return Error_rsa_key_packet;
 }
 
-int ProtocolParser::parse_login_data()
+int ProtocolParser::parse_login_packet()
 {
 	if (!complete_)
 	{
@@ -143,6 +153,7 @@ int ProtocolParser::parse_login_data()
 
 	login_.clear();
 	passwd_hash_.clear();
+	got_login_data_ = false;
 
 	// decoding data
 	std::vector<char> decrypted_data;
@@ -185,6 +196,8 @@ int ProtocolParser::parse_login_data()
 	passwd_hash_.insert(passwd_hash_.begin(), decrypted_data[shift],
 		decrypted_data[shift] + passwd_length);
 
+	got_login_data_ = true;
+
 	return Error_no;
 }
 
@@ -193,7 +206,7 @@ int ProtocolParser::parse_data_packet()
 	return Error_no;
 }
 
-int ProtocolParser::prepare_packet(std::vector<char> data, std::vector<char>& out_packet) const
+int ProtocolParser::prepare_packet(const std::vector<char>& data, std::vector<char>& out_packet) const
 {
 	// encrypting
 	std::vector<char> encrypted_data;
@@ -225,6 +238,12 @@ int ProtocolParser::prepare_packet(std::vector<char> data, std::vector<char>& ou
 	}
 
 	return Error_no;
+}
+
+int ProtocolParser::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const
+{
+	const std::vector<char>& pub_key = rsa_crypting_.GetInternalPublicKey();
+	return prepare_packet(pub_key, packet);
 }
 
 } // namespace TunnelCommon

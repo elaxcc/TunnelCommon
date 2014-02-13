@@ -49,7 +49,7 @@ void genrsa_cb(int p, int n, void *arg)
 #endif
 }
 
-void RsaCrypting::GenerateInternalKeys()
+int RsaCrypting::GenerateInternalKeys()
 {
 	if (rsa_internal_)
 	{
@@ -64,7 +64,11 @@ void RsaCrypting::GenerateInternalKeys()
 	/* Генерируем ключи */
 	BIGNUM *e = BN_new();
 	BN_set_word(e, 65537);
-	RSA_generate_key_ex(rsa_internal_, g_rsa_key_length, e, NULL);
+	int res = RSA_generate_key_ex(rsa_internal_, g_rsa_key_length, e, NULL);
+	if (res < 0)
+	{
+		return Error_GeneratingInternalKeys;
+	}
 
 	char *pri_key = NULL; // Private key
 	char *pub_key = NULL; // Public key
@@ -94,9 +98,11 @@ void RsaCrypting::GenerateInternalKeys()
 	delete [] pri_key;
 	delete [] pub_key;
 	BN_free(e);
+
+	return Errror_no;
 }
 
-void RsaCrypting::RSA_FromPublicKey(const std::vector<char>& public_key)
+int RsaCrypting::RSA_FromPublicKey(const std::vector<char>& public_key)
 {
 	if (rsa_external_)
 	{
@@ -104,13 +110,19 @@ void RsaCrypting::RSA_FromPublicKey(const std::vector<char>& public_key)
 	}
 
 	BIO *bio_pub = BIO_new(BIO_s_mem());
-	BIO_write(bio_pub, &public_key[0], public_key.size());
+	int res = BIO_write(bio_pub, &public_key[0], public_key.size());
+	if (res <= 0)
+	{
+		return Error_GeneratingExternalKeys;
+	}
 
 	rsa_external_ = RSA_new();
 	rsa_external_ = PEM_read_bio_RSAPublicKey(bio_pub, &rsa_external_, NULL, NULL);
+
+	return Errror_no;
 }
 
-void RsaCrypting::RSA_FromPublicKey(char *public_key, int public_key_length)
+int RsaCrypting::RSA_FromPublicKey(char *public_key, int public_key_length)
 {
 	if (rsa_external_)
 	{
@@ -118,10 +130,16 @@ void RsaCrypting::RSA_FromPublicKey(char *public_key, int public_key_length)
 	}
 
 	BIO *bio_pub = BIO_new(BIO_s_mem());
-	BIO_write(bio_pub, public_key, public_key_length);
+	int res = BIO_write(bio_pub, public_key, public_key_length);
+	if (res <= 0)
+	{
+		return Error_GeneratingExternalKeys;
+	}
 
 	rsa_external_ = RSA_new();
 	rsa_external_ = PEM_read_bio_RSAPublicKey(bio_pub, &rsa_external_, NULL, NULL);
+
+	return Errror_no;
 }
 
 int RsaCrypting::EncryptByInternalRSA(const std::vector<char>& in_data, std::vector<char>& out_data) const

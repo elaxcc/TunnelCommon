@@ -20,7 +20,7 @@ public:
 	RsaCrypting();
 	~RsaCrypting();
 
-	void GenerateInternalKeys();
+	int GenerateInternalKeys();
 	
 	const std::vector<char>& GetInternalPublicKey() const { return public_key_; }
 	const std::vector<char>& GetInternalPrivateKey() const { return private_key_; }
@@ -30,8 +30,8 @@ public:
 
 	int EncryptByExternalRSA(const std::vector<char>& in_data, std::vector<char>& out_data) const;
 
-	void RSA_FromPublicKey(const std::vector<char>& public_key);
-	void RSA_FromPublicKey(char *public_key, int public_key_length);
+	int RSA_FromPublicKey(const std::vector<char>& public_key);
+	int RSA_FromPublicKey(char *public_key, int public_key_length);
 
 private:
 	std::vector<char> public_key_;

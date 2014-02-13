@@ -24,11 +24,12 @@ public:
 	~ProtocolParser();
 
 	int parse_common(const std::vector<char>& data);
-	void flush();
+	void flush_common();
 	void reset();
 	bool is_complete() { return complete_; }
 
 	int parse_rsa_key_packet();
+	bool got_rsa_key() { return got_rsa_key_; }
 
 	/*!
 	 * Login packet format:
@@ -37,21 +38,24 @@ public:
 	 * 3.) Password hash length
 	 * 4.) Password hash
 	 */
-	int parse_login_data();
+	int parse_login_packet();
 	const std::vector<char>& get_login() const { return login_; }
 	const std::vector<char>& get_passwd_hash() const { return passwd_hash_; }
+	bool got_login_data() { return got_login_data_; }
 
 	/*!
 	 * Data packet format
 	 */
 	int parse_data_packet();
 
-	int prepare_packet(std::vector<char> data, std::vector<char>& out_packet) const;
+	int prepare_packet(const std::vector<char>& data, std::vector<char>& out_packet) const;
+	int prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const;
 
 private:
 	RsaCrypting rsa_crypting_;
 	CRC32_hash crc_calc_;
 	std::vector<char> buffer_;
+
 	bool got_data_len_;
 	bool got_data_;
 	bool got_crc_;
@@ -60,6 +64,9 @@ private:
 	std::vector<char> data_;
 	boost::uint32_t crc_;
 
+	bool got_rsa_key_;
+
+	bool got_login_data_;
 	std::vector<char> login_;
 	std::vector<char> passwd_hash_;
 };
