@@ -5,6 +5,8 @@
 namespace TunnelCommon
 {
 
+const std::string ProtocolParser::c_user_accept_packet_ = "Hello user!!!";
+
 ProtocolParser::ProtocolParser()
 	: got_data_len_(false)
 	, got_data_(false)
@@ -238,6 +240,12 @@ int ProtocolParser::prepare_packet(const std::vector<char>& data, std::vector<ch
 	}
 
 	return Error_no;
+}
+
+int ProtocolParser::prepare_packet(const std::string& data, std::vector<char>& out_packet) const
+{
+	std::vector<char> data_vec(data.c_str(), data.c_str() + data.size());
+	return prepare_packet(data_vec, out_packet);
 }
 
 int ProtocolParser::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const

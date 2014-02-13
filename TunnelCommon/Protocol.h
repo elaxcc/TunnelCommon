@@ -20,6 +20,8 @@ public:
 		Error_parse_login_packet = -5
 	};
 
+	static const std::string c_user_accept_packet_;
+
 	ProtocolParser();
 	~ProtocolParser();
 
@@ -49,6 +51,7 @@ public:
 	int parse_data_packet();
 
 	int prepare_packet(const std::vector<char>& data, std::vector<char>& out_packet) const;
+	int prepare_packet(const std::string& data, std::vector<char>& out_packet) const;
 	int prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const;
 
 private:
