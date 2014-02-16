@@ -41,9 +41,10 @@ public:
 	 * 4.) Password hash
 	 */
 	int parse_login_packet();
+	bool got_login_data() { return got_login_data_; }
 	const std::vector<char>& get_login() const { return login_; }
 	const std::vector<char>& get_passwd_hash() const { return passwd_hash_; }
-	bool got_login_data() { return got_login_data_; }
+	const std::string get_node_name() const { return node_name_; }
 
 	/*!
 	 * Data packet format
@@ -72,6 +73,7 @@ private:
 	bool got_login_data_;
 	std::vector<char> login_;
 	std::vector<char> passwd_hash_;
+	std::string node_name_;
 };
 
 } // namespace TunnelCommon
