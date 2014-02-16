@@ -5,25 +5,22 @@
 namespace TunnelCommon
 {
 
-const std::string ProtocolParser::c_user_accept_packet_ = "Hello user!!!";
-
-ProtocolParser::ProtocolParser()
+Protocol::Protocol()
 	: got_data_len_(false)
 	, got_data_(false)
 	, got_crc_(false)
 	, complete_(false)
-	, got_rsa_key_(false)
-	, got_login_data_(false)
+	, got_external_rsa_key_(false)
 {
 	rsa_crypting_.GenerateInternalKeys();
 }
 
-ProtocolParser::~ProtocolParser()
+Protocol::~Protocol()
 {
 	reset();
 }
 
-int ProtocolParser::parse_common(const std::vector<char>& data)
+int Protocol::parse_common(const std::vector<char>& data)
 {
 	buffer_.insert(buffer_.end(), data.begin(), data.end());
 
@@ -94,7 +91,7 @@ int ProtocolParser::parse_common(const std::vector<char>& data)
 	return Error_no;
 }
 
-void ProtocolParser::flush_common()
+void Protocol::flush_common()
 {
 	got_data_len_ = false;
 	got_data_ = false;
@@ -105,19 +102,16 @@ void ProtocolParser::flush_common()
 	data_.clear();
 }
 
-void ProtocolParser::reset()
+void Protocol::reset()
 {
 	flush_common();
 
 	buffer_.clear();
-	login_.clear();
-	passwd_hash_.clear();
 
-	got_rsa_key_ = false;
-	got_login_data_ = false;
+	got_external_rsa_key_ = false;
 }
 
-int ProtocolParser::parse_rsa_key_packet()
+int Protocol::parse_external_rsa_key_packet()
 {
 	if (!complete_)
 	{
@@ -138,101 +132,29 @@ int ProtocolParser::parse_rsa_key_packet()
 
 	std::vector<char> external_public_key(data_);
 	int res = rsa_crypting_.RSA_FromPublicKey(&data_[sizeof(rsa_pub_kye_len)], rsa_pub_kye_len);
-	if (res == RsaCrypting::Errror_no)
+	if (res == TunnelCommon::RsaCrypting::Errror_no)
 	{
-		got_rsa_key_ = true;
+		got_external_rsa_key_ = true;
 		return Error_no;
 	}
 	return Error_rsa_key_packet;
 }
 
-int ProtocolParser::parse_login_packet()
+int Protocol::prepare_packet(int packet_type, const std::vector<char>& data,
+	std::vector<char>& out_packet) const
 {
-	if (!complete_)
+	std::vector<char> data_copy(data.begin(), data.end());
+
+	// packet type
+	for (int i = sizeof(packet_type) - 1; i > 0; --i)
 	{
-		return Error_packet_not_complete;
+		char tmp = (char) (packet_type >> (8 * i));
+		data_copy.insert(data_copy.begin(), tmp);
 	}
 
-	login_.clear();
-	passwd_hash_.clear();
-	got_login_data_ = false;
-
-	// decoding data
-	std::vector<char> decrypted_data;
-	rsa_crypting_.DecryptByInternalRSA(data_, decrypted_data);
-
-	boost::uint32_t processed_data = 0;
-
-	// login length
-	boost::uint32_t login_length;
-	login_length = 0x000000FF & decrypted_data[0];
-	login_length = login_length | (0x0000FF00 & (decrypted_data[1] << 8));
-	login_length = login_length | (0x00FF0000 & (decrypted_data[2] << 16));
-	login_length = login_length | (0xFF000000 & (decrypted_data[3] << 24));
-	processed_data += sizeof(login_length);
-
-	if (login_length + sizeof(login_length) >= data_.size())
-	{
-		return Error_parse_login_packet;
-	}
-
-	// login
-	login_.insert(login_.begin(), decrypted_data[processed_data],
-		decrypted_data[processed_data] + login_length);
-	processed_data += login_length;
-
-	// password length
-	boost::uint32_t passwd_length;
-	passwd_length = 0x000000FF & decrypted_data[processed_data];
-	passwd_length = passwd_length | (0x0000FF00 & (decrypted_data[processed_data + 1] << 8));
-	passwd_length = passwd_length | (0x00FF0000 & (decrypted_data[processed_data + 2] << 16));
-	passwd_length = passwd_length | (0xFF000000 & (decrypted_data[processed_data + 3] << 24));
-	processed_data += sizeof(passwd_length);
-
-	if ((login_length + sizeof(login_length) + passwd_length  + sizeof(passwd_length)) > data_.size())
-	{
-		return Error_parse_login_packet;
-	}
-
-	// password
-	passwd_hash_.insert(passwd_hash_.begin(), decrypted_data[processed_data],
-		decrypted_data[processed_data] + passwd_length);
-
-	// node name length
-	boost::uint32_t node_name_length;
-	node_name_length = 0x000000FF & decrypted_data[processed_data];
-	node_name_length = node_name_length | (0x0000FF00 & (decrypted_data[processed_data + 1] << 8));
-	node_name_length = node_name_length | (0x00FF0000 & (decrypted_data[processed_data + 2] << 16));
-	node_name_length = node_name_length | (0xFF000000 & (decrypted_data[processed_data + 3] << 24));
-	processed_data += sizeof(node_name_length);
-
-	if ((login_length + sizeof(login_length) + 
-		passwd_length  + sizeof(passwd_length) +
-		node_name_length + sizeof(node_name_length)) > data_.size())
-	{
-		return Error_parse_login_packet;
-	}
-
-	if (node_name_length != 0)
-	{
-		node_name_.insert(0, decrypted_data[processed_data], + node_name_length);
-	}
-
-	got_login_data_ = true;
-
-	return Error_no;
-}
-
-int ProtocolParser::parse_data_packet()
-{
-	return Error_no;
-}
-
-int ProtocolParser::prepare_packet(const std::vector<char>& data, std::vector<char>& out_packet) const
-{
 	// encrypting
 	std::vector<char> encrypted_data;
-	int encrypt_result = rsa_crypting_.EncryptByInternalRSA(data, encrypted_data);
+	int encrypt_result = rsa_crypting_.EncryptByInternalRSA(data_copy, encrypted_data);
 	if (encrypt_result != TunnelCommon::RsaCrypting::Errror_no)
 	{
 		return Error_prepare_packet;
@@ -249,6 +171,7 @@ int ProtocolParser::prepare_packet(const std::vector<char>& data, std::vector<ch
 	// encrypted data
 	out_packet.insert(out_packet.end(), encrypted_data.begin(), encrypted_data.end());
 
+	// CRC32
 	TunnelCommon::CRC32_hash crc_calc;
 	crc_calc.Update(encrypted_data);
 	crc_calc.Final();
@@ -262,16 +185,27 @@ int ProtocolParser::prepare_packet(const std::vector<char>& data, std::vector<ch
 	return Error_no;
 }
 
-int ProtocolParser::prepare_packet(const std::string& data, std::vector<char>& out_packet) const
+int Protocol::prepare_packet(int packet_type, const std::string& data,
+	std::vector<char>& out_packet) const
 {
 	std::vector<char> data_vec(data.c_str(), data.c_str() + data.size());
-	return prepare_packet(data_vec, out_packet);
+	return prepare_packet(packet_type, data_vec, out_packet);
 }
 
-int ProtocolParser::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const
+int Protocol::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const
 {
 	const std::vector<char>& pub_key = rsa_crypting_.GetInternalPublicKey();
-	return prepare_packet(pub_key, packet);
+	
+	int pub_key_size = pub_key.size();
+	for (int i = 0; i < sizeof(int); ++i)
+	{
+		char tmp = (char) (pub_key_size >> (8 * i));
+		packet.push_back(tmp);
+	}
+
+	packet.insert(packet.begin(), pub_key.begin(), pub_key.end());
+
+	return Error_no;
 }
 
 } // namespace TunnelCommon
