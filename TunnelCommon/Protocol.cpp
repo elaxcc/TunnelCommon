@@ -53,11 +53,21 @@ int Protocol::parse(const std::vector<char>& data)
 			return Error_wait_packet;
 		}
 
-		data_.insert(data_.begin(), buffer_.begin(), buffer_.begin() + data_len_);
-		buffer_.erase(buffer_.begin(), buffer_.begin() + data_len_);
-		got_data_ = true;
-
-		crc_calc_.Update(data_);
+		if (!got_rsa_key())
+		{
+			data_.insert(data_.begin(), buffer_.begin(), buffer_.begin() + data_len_);
+			buffer_.erase(buffer_.begin(), buffer_.begin() + data_len_);
+			got_data_ = true;
+			crc_calc_.Update(data_);
+		}
+		else
+		{
+			rsa_crypting_.DecryptByInternalRSA(
+				std::vector<char>(buffer_.begin(), buffer_.begin() + data_len_),
+				data_);
+			crc_calc_.Update(&buffer_[0], data_len_);
+			buffer_.erase(buffer_.begin(), buffer_.begin() + data_len_);
+		}
 	}
 
 	if (!got_crc_)
@@ -206,7 +216,7 @@ int Protocol::prepare_packet(int packet_type, const std::vector<char>& data,
 	std::vector<char> encrypted_data;
 	if (need_encrypt)
 	{
-		int encrypt_result = rsa_crypting_.EncryptByInternalRSA(data_copy, encrypted_data);
+		int encrypt_result = rsa_crypting_.EncryptByExternalRSA(data_copy, encrypted_data);
 		if (encrypt_result != TunnelCommon::RsaCrypting::Errror_no)
 		{
 			return Error_prepare_packet;
