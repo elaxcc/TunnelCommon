@@ -33,12 +33,14 @@ public:
 	Protocol();
 	~Protocol();
 
-	int parse_common(const std::vector<char>& data);
-	void flush_common();
+	int parse(const std::vector<char>& data);
+	void flush();
 	void reset();
 	bool is_complete() { return complete_; }
+	const std::vector<char>& ged_data() { return data_; }
 
-	virtual int process_packet() = 0;
+	virtual int process_in() = 0;
+	virtual int process_out() = 0;
 
 	int parse_external_rsa_key_packet();
 	bool got_rsa_key() { return got_external_rsa_key_; }

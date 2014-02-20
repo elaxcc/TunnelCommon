@@ -20,7 +20,7 @@ Protocol::~Protocol()
 	reset();
 }
 
-int Protocol::parse_common(const std::vector<char>& data)
+int Protocol::parse(const std::vector<char>& data)
 {
 	buffer_.insert(buffer_.end(), data.begin(), data.end());
 
@@ -83,7 +83,7 @@ int Protocol::parse_common(const std::vector<char>& data)
 		}
 		else
 		{
-			flush_common();
+			flush();
 			return Error_crc;
 		}
 	}
@@ -91,7 +91,7 @@ int Protocol::parse_common(const std::vector<char>& data)
 	return Error_no;
 }
 
-void Protocol::flush_common()
+void Protocol::flush()
 {
 	got_data_len_ = false;
 	got_data_ = false;
@@ -104,7 +104,7 @@ void Protocol::flush_common()
 
 void Protocol::reset()
 {
-	flush_common();
+	flush();
 
 	buffer_.clear();
 
@@ -130,7 +130,6 @@ int Protocol::parse_external_rsa_key_packet()
 		return Error_rsa_key_packet;
 	}
 
-	std::vector<char> external_public_key(data_);
 	int res = rsa_crypting_.RSA_FromPublicKey(&data_[sizeof(rsa_pub_kye_len)], rsa_pub_kye_len);
 	if (res == TunnelCommon::RsaCrypting::Errror_no)
 	{
