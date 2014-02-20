@@ -37,7 +37,7 @@ public:
 	void flush();
 	void reset();
 	bool is_complete() { return complete_; }
-	const std::vector<char>& ged_data() { return data_; }
+	const std::vector<char>& get_data() { return data_; }
 
 	virtual int process_in() = 0;
 	virtual int process_out() = 0;
@@ -49,9 +49,11 @@ public:
 	int prepare_packet(int packet_type, const std::string& data, std::vector<char>& out_packet) const;
 	int prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const;
 
-private:
+public:
 	RsaCrypting rsa_crypting_;
 	CRC32_hash crc_calc_;
+
+private:
 	std::vector<char> buffer_;
 
 	bool got_data_len_;

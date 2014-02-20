@@ -202,7 +202,7 @@ int Protocol::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) con
 		packet.push_back(tmp);
 	}
 
-	packet.insert(packet.begin(), pub_key.begin(), pub_key.end());
+	packet.insert(packet.end(), pub_key.begin(), pub_key.end());
 
 	return Error_no;
 }
