@@ -11,6 +11,7 @@ Protocol::Protocol()
 	, got_crc_(false)
 	, complete_(false)
 	, got_external_rsa_key_(false)
+	, packet_type_(Packet_type_unknown)
 {
 	rsa_crypting_.GenerateInternalKeys();
 }
@@ -52,7 +53,7 @@ int Protocol::parse(const std::vector<char>& data)
 			return Error_wait_packet;
 		}
 
-		data_.insert(data_.begin(), buffer_.begin(), buffer_.end());
+		data_.insert(data_.begin(), buffer_.begin(), buffer_.begin() + data_len_);
 		buffer_.erase(buffer_.begin(), buffer_.begin() + data_len_);
 		got_data_ = true;
 
@@ -71,6 +72,8 @@ int Protocol::parse(const std::vector<char>& data)
 		crc_ = crc_ | (0x00FF0000 & (buffer_[2] << 16));
 		crc_ = crc_ | (0xFF000000 & (buffer_[3] << 24));
 
+		buffer_.erase(buffer_.begin(), buffer_.begin() + sizeof(crc_));
+
 		got_crc_ = true;
 
 		crc_calc_.Final();
@@ -79,6 +82,7 @@ int Protocol::parse(const std::vector<char>& data)
 		if (calculated_crc == crc_)
 		{
 			complete_ = true;
+			parse_packet_type();
 			return Error_no;
 		}
 		else
@@ -100,6 +104,8 @@ void Protocol::flush()
 
 	crc_calc_.Clean();
 	data_.clear();
+
+	packet_type_ = Packet_type_unknown;
 }
 
 void Protocol::reset()
@@ -139,40 +145,40 @@ int Protocol::parse_external_rsa_key_packet()
 	return Error_rsa_key_packet;
 }
 
-int Protocol::prepare_packet(int packet_type, const std::vector<char>& data,
+int Protocol::parse_packet_type()
+{
+	if (data_.size() < sizeof(int))
+	{
+		return Error_packet_too_short;
+	}
+
+	packet_type_ = 0x000000FF & data_[0];
+	packet_type_ = packet_type_ | (0x0000FF00 & (data_[1] << 8));
+	packet_type_ = packet_type_ | (0x00FF0000 & (data_[2] << 16));
+	packet_type_ = packet_type_ | (0xFF000000 & (data_[3] << 24));
+
+	data_.erase(data_.begin(), data_.begin() + sizeof(int));
+	
+	return Error_no;
+}
+
+int Protocol::prepare_packet_private(const std::vector<char>& data,
 	std::vector<char>& out_packet) const
 {
-	std::vector<char> data_copy(data.begin(), data.end());
-
-	// packet type
-	for (int i = sizeof(packet_type) - 1; i > 0; --i)
-	{
-		char tmp = (char) (packet_type >> (8 * i));
-		data_copy.insert(data_copy.begin(), tmp);
-	}
-
-	// encrypting
-	std::vector<char> encrypted_data;
-	int encrypt_result = rsa_crypting_.EncryptByInternalRSA(data_copy, encrypted_data);
-	if (encrypt_result != TunnelCommon::RsaCrypting::Errror_no)
-	{
-		return Error_prepare_packet;
-	}
-
-	// encrypted data length
-	unsigned encrypted_data_len = encrypted_data.size();
+	// data length
+	unsigned encrypted_data_len = data.size();
 	for (int i = 0; i < sizeof(encrypted_data_len); ++i)
 	{
 		char tmp = (char) (encrypted_data_len >> (8 * i));
 		out_packet.push_back(tmp);
 	}
 
-	// encrypted data
-	out_packet.insert(out_packet.end(), encrypted_data.begin(), encrypted_data.end());
+	// data
+	out_packet.insert(out_packet.end(), data.begin(), data.end());
 
 	// CRC32
 	TunnelCommon::CRC32_hash crc_calc;
-	crc_calc.Update(encrypted_data);
+	crc_calc.Update(data);
 	crc_calc.Final();
 	boost::uint32_t crc = crc_calc.GetHash();
 	for (int i = 0; i < sizeof(crc); ++i)
@@ -184,27 +190,55 @@ int Protocol::prepare_packet(int packet_type, const std::vector<char>& data,
 	return Error_no;
 }
 
+int Protocol::prepare_packet(int packet_type, const std::vector<char>& data,
+	std::vector<char>& out_packet, bool need_encrypt) const
+{
+	std::vector<char> data_copy(data.begin(), data.end());
+
+	// packet type
+	for (int i = sizeof(packet_type) - 1; i >= 0; --i)
+	{
+		char tmp = (char) (packet_type >> (8 * i));
+		data_copy.insert(data_copy.begin(), tmp);
+	}
+
+	// encrypting
+	std::vector<char> encrypted_data;
+	if (need_encrypt)
+	{
+		int encrypt_result = rsa_crypting_.EncryptByInternalRSA(data_copy, encrypted_data);
+		if (encrypt_result != TunnelCommon::RsaCrypting::Errror_no)
+		{
+			return Error_prepare_packet;
+		}
+	}
+
+	const std::vector<char>& packet_data = need_encrypt ? encrypted_data : data_copy;
+	return prepare_packet_private(packet_data, out_packet);
+}
+
 int Protocol::prepare_packet(int packet_type, const std::string& data,
-	std::vector<char>& out_packet) const
+	std::vector<char>& out_packet, bool need_encrypt) const
 {
 	std::vector<char> data_vec(data.c_str(), data.c_str() + data.size());
-	return prepare_packet(packet_type, data_vec, out_packet);
+	return prepare_packet(packet_type, data_vec, out_packet, need_encrypt);
 }
 
 int Protocol::prepare_rsa_internal_pub_key_packet(std::vector<char>& packet) const
 {
 	const std::vector<char>& pub_key = rsa_crypting_.GetInternalPublicKey();
-	
-	int pub_key_size = pub_key.size();
-	for (int i = 0; i < sizeof(int); ++i)
+
+	std::vector<char> data;
+	unsigned pub_key_len = pub_key.size();
+	for (int i = 0; i < sizeof(pub_key_len); ++i)
 	{
-		char tmp = (char) (pub_key_size >> (8 * i));
-		packet.push_back(tmp);
+		char tmp = (char) (pub_key_len >> (8 * i));
+		data.push_back(tmp);
 	}
 
-	packet.insert(packet.end(), pub_key.begin(), pub_key.end());
+	data.insert(data.end(), pub_key.begin(), pub_key.end());
 
-	return Error_no;
+	return prepare_packet(Packet_type_external_rsa_key, data, packet, false);
 }
 
 } // namespace TunnelCommon

@@ -15,7 +15,7 @@ public:
 	void Final();
 	void Clean();
 
-	const std::vector<char> GetHash() const { return hash_; };
+	const std::vector<char>& GetHash() const { return hash_; };
 
 private:
 	EVP_MD_CTX mdctx_;
