@@ -5,6 +5,8 @@
 namespace TunnelCommon
 {
 
+const std::string Protocol::c_packet_login_accept = "Hello user!!!";
+
 Protocol::Protocol()
 	: got_data_len_(false)
 	, got_data_(false)

@@ -29,8 +29,11 @@ public:
 		Error_parse_login_packet = -5,
 		Error_unknown_packet = -6,
 		Error_parse_login_node_not_exist = -7,
-		Error_packet_too_short = -8
+		Error_packet_too_short = -8,
+		Error_server_accept = -9
 	};
+
+	static const std::string c_packet_login_accept;
 
 	Protocol();
 	~Protocol();
